@@ -6,6 +6,8 @@ Created on Wed May 18 16:15:19 2022
 @author: jack
 """
 
+import os
+
 import tensorflow as tf
 
 import wget
@@ -49,5 +51,7 @@ class classifybot(object):
                 'emoji_name': self.class_names[np.argmax(score)],
                 }
             result = self.client.add_reaction(react_request)
+            
+            os.remove(file)
             
 handler_class = classifybot
