@@ -1,3 +1,7 @@
+## ignore output tensorflow model
+kf_model.model
+class_names.pkl
+
 ## image files
 *.png
 

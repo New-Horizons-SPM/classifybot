@@ -73,7 +73,7 @@ for message_id in range(first_unread_id, newest_message_id, 100):
     results = client.get_messages(request)
     if results['result'] == 'success':
         for message in results['messages']:
-            if message['content'].startswith('<div class="message_inline_image">') and 'read' not in message['flags']:
+            if '<div class="message_inline_image">' in message['content'] and 'read' not in message['flags']:
                 url = message['content'].split('<a href="')[1].split('">')[0].replace('&amp;', '&')
                 for reaction in message['reactions']:
                     path = 'image_data/'+reaction['emoji_name']
