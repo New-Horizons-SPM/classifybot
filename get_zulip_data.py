@@ -41,15 +41,15 @@ request['narrow'] = [
         # {"operator": "topic", "operand": "survey"},
     ]  
 
-# get id of first unread message
-request['anchor'] = 'first_unread'
-request['num_before'] = 0
-request['num_after'] = 0
-
-# ##go for oldest
-# request['anchor'] = 'oldest'
+# # get id of first unread message
+# request['anchor'] = 'first_unread'
 # request['num_before'] = 0
-# request['num_after'] = 1
+# request['num_after'] = 0
+
+##go for oldest
+request['anchor'] = 'oldest'
+request['num_before'] = 0
+request['num_after'] = 1
 
 result = client.get_messages(request)
 
