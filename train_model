@@ -1,0 +1,28 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Wed May 18 13:30:07 2022
+
+https://www.tensorflow.org/tutorials/load_data/images
+
+@author: jack
+"""
+
+import numpy as np
+import os
+import PIL
+import PIL.Image
+import tensorflow as tf
+import tensorflow_datasets as tfds
+
+import pathlib
+
+data_dir = pathlib.Path('image_data')
+
+train_ds = tf.keras.utils.image_dataset_from_directory(
+    data_dir,
+    validation_split = 0.2,
+    subset='training',
+    seed=123,
+    image_size=(221, 221),
+    batch_size=32)
