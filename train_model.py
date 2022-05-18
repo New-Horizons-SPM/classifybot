@@ -15,7 +15,8 @@ import PIL
 import PIL.Image
 import tensorflow as tf
 # import tensorflow_datasets as tfds
-
+import matplotlib
+matplotlib.use('Agg') ## for plotting headless
 import matplotlib.pyplot as plt
 
 import pathlib
