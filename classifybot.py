@@ -44,13 +44,19 @@ class classifybot(object):
             img_array = tf.expand_dims(img_array, 0)
             
             predictions = self.model.predict(img_array)
-            score = tf.nn.softmax(predictions[0])
+            score = np.array(tf.nn.softmax(predictions[0]))
             
-            react_request = {
-                'message_id': message['id'],
-                'emoji_name': self.class_names[np.argmax(score)],
-                }
-            result = self.client.add_reaction(react_request)
+            ## send reactions for categories above 80%:
+            score /= np.amax(np.array(score))
+            class_names = np.array(self.class_names)
+            emojis = class_names[score > .8]
+            
+            for emoji in emojis:
+                react_request = {
+                    'message_id': message['id'],
+                    'emoji_name': emoji,
+                    }
+                _ = self.client.add_reaction(react_request)
             
             os.remove(file)
             
