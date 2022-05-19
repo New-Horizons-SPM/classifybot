@@ -29,6 +29,9 @@ except:
 zuliprc_path = os.getcwd() + '/zuliprc'
 client = zulip.Client(config_file=zuliprc_path)
 
+## specify hard-coded classifybot name
+classifybot_name = 'classifybot'
+
 
     
 
@@ -76,18 +79,20 @@ for message_id in range(first_unread_id, newest_message_id, 100):
             if '<div class="message_inline_image">' in message['content'] and 'read' not in message['flags']:
                 url = message['content'].split('<a href="')[1].split('">')[0].replace('&amp;', '&')
                 for reaction in message['reactions']:
-                    path = 'image_data/'+reaction['emoji_name']
-                    try:
-                        os.mkdir(path)
-                    except:
-                        pass
-                    
-                    try:
-                        ## down wget a duplicate png
-                        if not url.split('/scanbot/')[1].split('?')[0] in os.listdir(path):
-                            wget.download(url=url, out=path)
-                    except:
-                        pass
+                    if reaction['user']['full_name'] != classifybot_name:
+                        path = 'image_data/'+reaction['emoji_name']
+                        try:
+                            os.mkdir(path)
+                        except:
+                            pass
+                        
+                        try:
+                            ## down wget a duplicate png
+                            if not url.split('/scanbot/')[1].split('?')[0] in os.listdir(path):
+                                wget.download(url=url, out=path)
+                        except:
+                            pass
+                
                 ## mark the message as read
                 to_mark_read.append(message['id'])
 
