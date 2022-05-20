@@ -25,9 +25,14 @@ class classifybot(object):
         self.model = tf.keras.models.load_model('kf_model.model', custom_objects={'macro_soft_f1':macro_soft_f1})
         self.class_names = pickle.load(open('class_names.pkl', 'rb'))
         self.client = zulip.Client(config_file='zuliprc')
+        self.threshold = .8
         
     def handle_message(self, message, bot_handler=None):
         self.bot_handler = bot_handler
+        
+        if 'set_threshold' in message['contents']:
+            self.threshold = float(message['contents'].split(' ')[1])
+        
         if(bot_handler):
             ## get the png
             print(message['content'])
@@ -50,7 +55,7 @@ class classifybot(object):
             ## send reactions for categories above 80%:
             score /= np.amax(np.array(score))
             class_names = np.array(self.class_names)
-            emojis = class_names[score > .8]
+            emojis = class_names[score > self.threshold]
             
             for emoji in emojis:
                 react_request = {
