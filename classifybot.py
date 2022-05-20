@@ -32,38 +32,42 @@ class classifybot(object):
         
         if 'set_threshold' in message['content']:
             self.threshold = float(message['content'].split(' ')[1])
+            bot_handler.send_reply(message, 'threshold is ' + str(self.threshold))
+            return
         
         if(bot_handler):
             ## get the png
             print(message['content'])
+            try:
+                # url = message['content'].split('<a href="')[1].split('">')[0].replace('&amp;', '&')
+                url = message['content'].split('(')[1].split(')')[0] #.replace('&amp;', '&')
+                file = wget.download(url)
+                
+                ## from https://www.tensorflow.org/tutorials/images/classification
+                img_height = 224
+                img_width = 224
+                
+                img = tf.keras.utils.load_img(file, target_size=(img_height, img_width))
+                img_array = tf.keras.utils.img_to_array(img)
+                img_array = tf.expand_dims(img_array, 0)
+                
+                predictions = self.model.predict(img_array)
+                score = np.array(tf.nn.softmax(predictions[0]))
+                
+                ## send reactions for categories above 80%:
+                score /= np.amax(np.array(score))
+                class_names = np.array(self.class_names)
+                emojis = class_names[score > self.threshold]
+                
+                for emoji in emojis:
+                    react_request = {
+                        'message_id': message['id'],
+                        'emoji_name': emoji,
+                        }
+                    _ = self.client.add_reaction(react_request)
             
-            # url = message['content'].split('<a href="')[1].split('">')[0].replace('&amp;', '&')
-            url = message['content'].split('(')[1].split(')')[0] #.replace('&amp;', '&')
-            file = wget.download(url)
-            
-            ## from https://www.tensorflow.org/tutorials/images/classification
-            img_height = 224
-            img_width = 224
-            
-            img = tf.keras.utils.load_img(file, target_size=(img_height, img_width))
-            img_array = tf.keras.utils.img_to_array(img)
-            img_array = tf.expand_dims(img_array, 0)
-            
-            predictions = self.model.predict(img_array)
-            score = np.array(tf.nn.softmax(predictions[0]))
-            
-            ## send reactions for categories above 80%:
-            score /= np.amax(np.array(score))
-            class_names = np.array(self.class_names)
-            emojis = class_names[score > self.threshold]
-            
-            for emoji in emojis:
-                react_request = {
-                    'message_id': message['id'],
-                    'emoji_name': emoji,
-                    }
-                _ = self.client.add_reaction(react_request)
-            
-            os.remove(file)
+                os.remove(file)
+            except Exception as e:
+                bot_handler.send_reply(message, e)
             
 handler_class = classifybot
