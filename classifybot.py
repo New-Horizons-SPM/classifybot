@@ -30,8 +30,8 @@ class classifybot(object):
     def handle_message(self, message, bot_handler=None):
         self.bot_handler = bot_handler
         
-        if 'set_threshold' in message['contents']:
-            self.threshold = float(message['contents'].split(' ')[1])
+        if 'set_threshold' in message['content']:
+            self.threshold = float(message['content'].split(' ')[1])
         
         if(bot_handler):
             ## get the png
