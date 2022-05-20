@@ -45,15 +45,15 @@ request['narrow'] = [
         # {"operator": "topic", "operand": "survey"},
     ]  
 
-# get id of first unread message
-# request['anchor'] = 'first_unread'
-# request['num_before'] = 0
-# request['num_after'] = 0
+## get id of first unread message
+request['anchor'] = 'first_unread'
+request['num_before'] = 0
+request['num_after'] = 0
 
 ##go for oldest
-request['anchor'] = 'oldest'
-request['num_before'] = 0
-request['num_after'] = 1
+# request['anchor'] = 'oldest'
+# request['num_before'] = 0
+# request['num_after'] = 1
 
 result = client.get_messages(request)
 
@@ -99,7 +99,7 @@ for message_id in range(first_unread_id, newest_message_id, 100):
     results = client.get_messages(request)
     if results['result'] == 'success':
         for message in results['messages']:
-            if '<div class="message_inline_image">' in message['content']: # and 'read' not in message['flags']:
+            if '<div class="message_inline_image">' in message['content'] and 'read' not in message['flags']:
                 url = message['content'].split('<a href="')[1].split('">')[0].replace('&amp;', '&')
                 labels = []
                 for reaction in message['reactions']:
