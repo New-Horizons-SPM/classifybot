@@ -9,6 +9,7 @@ Created on Wed May 18 16:15:19 2022
 import os
 
 import tensorflow as tf
+from tf_custom_metric import macro_soft_f1
 
 import wget
 
@@ -21,7 +22,7 @@ import zulip
 class classifybot(object):
     
     def __init__(self):
-        self.model = tf.keras.models.load_model('kf_model.model')
+        self.model = tf.keras.models.load_model('kf_model.model', custom_objects={'macro_soft_f1':macro_soft_f1})
         self.class_names = pickle.load(open('class_names.pkl', 'rb'))
         self.client = zulip.Client(config_file='zuliprc')
         
@@ -36,8 +37,8 @@ class classifybot(object):
             file = wget.download(url)
             
             ## from https://www.tensorflow.org/tutorials/images/classification
-            img_height = 221
-            img_width = 221
+            img_height = 224
+            img_width = 224
             
             img = tf.keras.utils.load_img(file, target_size=(img_height, img_width))
             img_array = tf.keras.utils.img_to_array(img)
