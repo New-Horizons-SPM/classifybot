@@ -9,7 +9,7 @@ pull in image pngs on firebase indexed on zulip thread, and get associated emoji
 """
 
 import os
-import time
+# import time
 import zulip
 import wget
 import pickle
@@ -83,7 +83,7 @@ for message_id in range(first_unread_id, newest_message_id, 100):
             if batch_index > max_batch_index:
                 max_batch_index = batch_index
     
-    batch_path = 'image_data/batch_' + str(max_batch_index) + '/'
+    batch_path = os.path.join('image_data', 'batch_' + str(max_batch_index))
     
     pickle.dump(False, open('retrain_flag.pkl', 'wb'))
     if len(os.listdir('image_data/' + 'batch_' + str(max_batch_index))) > 256:
@@ -92,7 +92,7 @@ for message_id in range(first_unread_id, newest_message_id, 100):
         pickle.dump(True, open('retrain_flag.pkl', 'wb'))
     
     try:
-        batch_labels = pickle.load(open(batch_path + 'file_labels.pkl', 'rb'))
+        batch_labels = pickle.load(open(os.path.join(batch_path,'file_labels.pkl'), 'rb'))
     except:
         print('no batch labels ' + batch_path)
         batch_labels = {}
@@ -112,7 +112,8 @@ for message_id in range(first_unread_id, newest_message_id, 100):
                     try:
                         if not url.split('/scanbot/')[1].split('?')[0] in os.listdir(batch_path):
                             filename = wget.download(url=url, out=batch_path)
-                            batch_labels[filename] = labels
+                            keyname = str(filename.split('image_data/')[1])
+                            batch_labels[keyname] = labels
                     except:
                         pass
 
@@ -124,7 +125,7 @@ for message_id in range(first_unread_id, newest_message_id, 100):
         print(results)
     
     ## dump the batch_labels
-    pickle.dump(batch_labels, open(batch_path + 'file_labels.pkl', 'wb'))
+    pickle.dump(batch_labels, open(os.path.join(batch_path, 'file_labels.pkl'), 'wb'))
         
     
         
