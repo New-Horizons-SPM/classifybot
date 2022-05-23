@@ -19,6 +19,8 @@ from tensorflow.keras import layers
 import tensorflow_hub as hub
 # import tensorflow_datasets as tfds
 
+import zulip
+
 
 # import matplotlib
 # matplotlib.use('Agg') ## for plotting headless
@@ -127,7 +129,8 @@ model = tf.keras.Sequential()
 model.add(hub.KerasLayer("https://tfhub.dev/google/imagenet/mobilenet_v2_100_224/feature_vector/5",
                    trainable=False))
 
-model.add(layers.Dense(1024, activation='relu', name='hidden_layer'))
+model.add(layers.Dense(256, activation='relu', name='hidden_layer_1'))
+model.add(layers.Dense(256, activation='relu', name='hidden_layer_2'))
 model.add(layers.Dense(N_LABELS, activation='sigmoid', name='output'))
 
 model.build([None, IMG_SIZE, IMG_SIZE, CHANNELS])
@@ -158,3 +161,15 @@ with open('class_names.pkl', 'wb') as f:
     pickle.dump(mlb.classes_, f)
     
 print(mlb.classes_)
+
+## zulip message saying the training is done
+client = zulip.Client(config_file='zuliprc')
+
+request = {
+    "type": "stream",
+    "to": "scanbot",
+    "topic": "TF model",
+    "content": "train_model finished"
+    }
+result = client.send_message(request)
+print(result)
