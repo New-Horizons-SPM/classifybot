@@ -10,19 +10,19 @@ https://www.tensorflow.org/tutorials/load_data/images
 
 from datetime import datetime
 import pickle
-import numpy as np
+# import numpy as np
 import os
-import PIL
-import PIL.Image
+# import PIL
+# import PIL.Image
 import tensorflow as tf
 from tensorflow.keras import layers
 import tensorflow_hub as hub
 # import tensorflow_datasets as tfds
 
 
-import matplotlib
-matplotlib.use('Agg') ## for plotting headless
-import matplotlib.pyplot as plt
+# import matplotlib
+# matplotlib.use('Agg') ## for plotting headless
+# import matplotlib.pyplot as plt
 
 from sklearn.preprocessing import MultiLabelBinarizer
 from sklearn.model_selection import train_test_split
@@ -31,6 +31,8 @@ import pathlib
 
 data_dir = pathlib.Path('image_data')
 
+# if not pickle.load(open('retrain_flag.pkl', 'rb')):
+#     return
 
 master_label_dict = {}
 for root, dirs, files in os.walk(data_dir):

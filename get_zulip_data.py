@@ -85,9 +85,11 @@ for message_id in range(first_unread_id, newest_message_id, 100):
     
     batch_path = 'image_data/batch_' + str(max_batch_index) + '/'
     
+    pickle.dump(False, open('retrain_flag.pkl', 'wb'))
     if len(os.listdir('image_data/' + 'batch_' + str(max_batch_index))) > 256:
         batch_path = 'image_data/batch_' + str(max_batch_index+1) + '/'
         os.mkdir(batch_path)
+        pickle.dump(True, open('retrain_flag.pkl', 'wb'))
     
     try:
         batch_labels = pickle.load(open(batch_path + 'file_labels.pkl', 'rb'))
