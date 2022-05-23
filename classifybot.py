@@ -118,7 +118,7 @@ class classifybot(object):
                 bad_emojis = ['-1', 'barber', 'bow_and_arrow', 'duel', 'poop', 'two', 'temperature']
                 good_emojis = ['+1', 'fire', 'flame', 'knife', 'sparkling_heart', 'tada']
                 
-                if all([label in bad_emojis for label in labels]):
+                if any([label in bad_emojis for label in labels]):
                     tip_shape = True
                 
                 if all([label in good_emojis for label in labels]):
