@@ -44,7 +44,7 @@ for root, dirs, files in os.walk(data_dir):
 data_files = []
 data_labels = []
 for key, value in master_label_dict.items():
-    data_files.append(key)
+    data_files.append(os.path.join(data_dir, key))
     data_labels.append(value)
     
 
