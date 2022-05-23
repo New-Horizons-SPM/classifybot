@@ -3,6 +3,9 @@ kf_model.model
 class_names.pkl
 file_labels.pkl
 
+## ignore config file
+config.ini
+
 # ignore the retrain model pickle flag
 retrain_flag.pkl
 

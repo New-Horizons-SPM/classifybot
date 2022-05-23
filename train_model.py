@@ -153,5 +153,8 @@ print('\nTraining took {}'.format(datetime.now()-start))
 
 
 model.save('kf_model.model')
+
 with open('class_names.pkl', 'wb') as f:
     pickle.dump(mlb.classes_, f)
+    
+print(mlb.classes_)
