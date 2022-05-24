@@ -48,8 +48,9 @@ data_labels = []
 for key, value in master_label_dict.items():
     data_files.append(os.path.join(data_dir, key))
     data_labels.append(value)
-    
 
+## turn thumbs_down into -1:
+data_labels = ['-1' if item == 'thumbs_down' else item for item in data_labels]
             
 X_train, X_val, y_train, y_val = train_test_split(data_files, data_labels, test_size=0.2, random_state=44)
 
