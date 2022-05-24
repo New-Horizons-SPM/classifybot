@@ -49,10 +49,14 @@ for key, value in master_label_dict.items():
     data_files.append(os.path.join(data_dir, key))
     data_labels.append(value)
 
-## turn thumbs_down into -1:
-data_labels = ['-1' if item == 'thumbs_down' else item for item in data_labels]
-## turn barber into striped_pole
-data_labels = ['striped_pole' if item == 'barber' else item for item in data_labels]
+
+for image_index, image_labels in enumerate(data_labels):
+    ## turn thumbs_down into -1:
+    image_labels = ['-1' if item == 'thumbs_down' else item for item in image_labels]
+    ## turn barber into striped_pole
+    image_labels = ['striped_pole' if item == 'barber' else item for item in image_labels]
+    
+    data_labels[image_index] = image_labels
             
 X_train, X_val, y_train, y_val = train_test_split(data_files, data_labels, test_size=0.2, random_state=44)
 
