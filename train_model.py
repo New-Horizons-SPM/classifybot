@@ -51,6 +51,8 @@ for key, value in master_label_dict.items():
 
 ## turn thumbs_down into -1:
 data_labels = ['-1' if item == 'thumbs_down' else item for item in data_labels]
+## turn barber into striped_pole
+data_labels = ['striped_pole' if item == 'barber' else item for item in data_labels]
             
 X_train, X_val, y_train, y_val = train_test_split(data_files, data_labels, test_size=0.2, random_state=44)
 
