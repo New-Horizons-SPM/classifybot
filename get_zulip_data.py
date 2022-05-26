@@ -17,12 +17,16 @@ import pickle
 
 # make database files
 try:
-    os.mkdir('image_data')
+    with open('config.ini', 'r') as f:
+        config = f.read()
+        image_data_path = config.split('image_database_directory=')[1].split('\n')[0]
+    
+    os.mkdir(image_data_path)
 except:
     print('image_data dir already exists')
     
-if not 'batch_0' in os.listdir('image_data'):
-    os.mkdir('image_data/batch_0')
+if not 'batch_0' in os.listdir(image_data_path):
+    os.mkdir(os.path.join(image_data_path, 'batch_0'))
 
 
 
@@ -75,7 +79,7 @@ for message_id in range(first_unread_id, newest_message_id, 100):
     request['num_after'] = 100
     
     ## check which batch folder to put images in
-    folders = os.listdir('image_data')
+    folders = os.listdir(image_data_path)
     max_batch_index = 0
     for name in folders:
         if name.split('_')[0] == 'batch':
@@ -83,11 +87,11 @@ for message_id in range(first_unread_id, newest_message_id, 100):
             if batch_index > max_batch_index:
                 max_batch_index = batch_index
     
-    batch_path = os.path.join('image_data', 'batch_' + str(max_batch_index))
+    batch_path = os.path.join(image_data_path, 'batch_' + str(max_batch_index))
     
     pickle.dump(False, open('retrain_flag.pkl', 'wb'))
-    if len(os.listdir('image_data/' + 'batch_' + str(max_batch_index))) > 256:
-        batch_path = 'image_data/batch_' + str(max_batch_index+1) + '/'
+    if len(os.listdir(batch_path)) > 256:
+        batch_path = os.path.join(image_data_path, 'batch_' + str(max_batch_index+1))
         os.mkdir(batch_path)
         pickle.dump(True, open('retrain_flag.pkl', 'wb'))
     
@@ -112,7 +116,7 @@ for message_id in range(first_unread_id, newest_message_id, 100):
                     try:
                         if not url.split('/scanbot/')[1].split('?')[0] in os.listdir(batch_path):
                             filename = wget.download(url=url, out=batch_path)
-                            keyname = str(filename.split('image_data/')[1])
+                            keyname = str(os.path.join(batch_path.split('/')[-1], filename.split('/')[-1]))
                             batch_labels[keyname] = labels
                     except:
                         pass

@@ -12,6 +12,7 @@ from datetime import datetime
 import pickle
 # import numpy as np
 import os
+import sys
 # import PIL
 # import PIL.Image
 import tensorflow as tf
@@ -29,12 +30,15 @@ import zulip
 from sklearn.preprocessing import MultiLabelBinarizer
 from sklearn.model_selection import train_test_split
 
-import pathlib
+# import pathlib
 
-data_dir = pathlib.Path('image_data')
+with open('config.ini', 'r') as f:
+    config = f.read()
+    data_dir = config.split('image_database_directory=')[1].split('\n')[0]
 
-# if not pickle.load(open('retrain_flag.pkl', 'rb')):
-#     return
+if not pickle.load(open('retrain_flag.pkl', 'rb')):
+    print('retrain flag not set')
+    sys.exit()
 
 master_label_dict = {}
 for root, dirs, files in os.walk(data_dir):
