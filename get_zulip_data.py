@@ -16,11 +16,12 @@ import pickle
 
 
 # make database files
+with open('config.ini', 'r') as f:
+    config = f.read()
+    image_data_path = config.split('image_database_directory=')[1].split('\n')[0]
+
+
 try:
-    with open('config.ini', 'r') as f:
-        config = f.read()
-        image_data_path = config.split('image_database_directory=')[1].split('\n')[0]
-    
     os.mkdir(image_data_path)
 except:
     print('image_data dir already exists')
