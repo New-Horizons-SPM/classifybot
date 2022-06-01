@@ -35,7 +35,7 @@ if not 'batch_0' in os.listdir(image_data_path):
 
 
 ## specify zuliprc file
-zuliprc_path = os.getcwd() + zuliprc_name
+zuliprc_path = os.path.join(os.getcwd(), zuliprc_name)
 client = zulip.Client(config_file=zuliprc_path)
 
 ## specify hard-coded classifybot name
