@@ -132,6 +132,9 @@ for message_id in range(first_unread_id, newest_message_id, 100):
                     
                 else:
                     keep_unread.append(message['id'])
+                    
+            else: ## message doesn't have an image in it; mark read
+                to_mark_read.append(message['id'])
 
     else:
         print(results)
