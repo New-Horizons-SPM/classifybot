@@ -61,6 +61,8 @@ request['num_after'] = 0
 # request['num_after'] = 1
 
 result = client.get_messages(request)
+print('first_unread anchor')
+print(result)
 
 first_unread_id = result['messages'][0]['id']
 
@@ -70,6 +72,8 @@ request['num_before'] = 1
 request['num_after'] = 0
 
 result = client.get_messages(request)
+print('newest anchor')
+print(result)
 
 newest_message_id = result['messages'][0]['id']
 
