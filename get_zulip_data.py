@@ -74,6 +74,7 @@ result = client.get_messages(request)
 newest_message_id = result['messages'][0]['id']
 
 to_mark_read = []
+keep_unread = []
 for message_id in range(first_unread_id, newest_message_id, 100):
     request['anchor'] = message_id
     request['num_before'] = 0
@@ -121,10 +122,12 @@ for message_id in range(first_unread_id, newest_message_id, 100):
                             batch_labels[keyname] = labels
                     except:
                         pass
-
-                
-                ## mark the message as read
-                to_mark_read.append(message['id'])
+                                    
+                    ## mark the message as read
+                    to_mark_read.append(message['id'])
+                    
+                else:
+                    keep_unread.append(message['id'])
 
     else:
         print(results)
@@ -142,6 +145,7 @@ if len(to_mark_read) > 0:
         'flag': 'read',
         }
     result = client.update_message_flags(mkrd_request)
+    print(result)
     
     # ## put a sleep in here to not hit the API rate limit
     # print('the slow loop to add eyes to all mark-read files')
@@ -152,6 +156,15 @@ if len(to_mark_read) > 0:
     #         }
     #     result = client.add_reaction(react_request)
     #     time.sleep(.3)
+    
+## mark messages that haven't been labelled unread
+mkunread_request = {
+        'messages': keep_unread,
+        'op': 'remove',
+        'flag': 'read',
+    }
+result = client.update_message_flags(mkunread_request)
+print(result)
     
     
 
