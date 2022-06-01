@@ -19,7 +19,10 @@ import pickle
 with open('config.ini', 'r') as f:
     config = f.read()
     image_data_path = config.split('image_database_directory=')[1].split('\n')[0]
-
+    zuliprc_name = config.split('zuliprc_name=')[1].split('\n')[0]
+    classifybot_name = config.split('classifybot_name=')[1].split('\n')[0]
+    scanbot_address = config.split('scanbot_address=')[1].split('\n')[0]
+    scanbot_stream = config.split('scanbot_stream=')[1].split('\n')[0]
 
 try:
     os.mkdir(image_data_path)
@@ -32,11 +35,11 @@ if not 'batch_0' in os.listdir(image_data_path):
 
 
 ## specify zuliprc file
-zuliprc_path = os.getcwd() + '/zuliprc'
+zuliprc_path = os.getcwd() + zuliprc_name
 client = zulip.Client(config_file=zuliprc_path)
 
 ## specify hard-coded classifybot name
-classifybot_name = 'classifybot'
+# classifybot_name = 'classifybot'
 
 
     
@@ -45,8 +48,8 @@ classifybot_name = 'classifybot'
 request = {}
 ## define the narrow
 request['narrow'] = [
-        {"operator": "sender", "operand": "scanbot-bot@zulip.schiffrin-zulip.cloud.edu.au"},
-        {"operator": "stream", "operand": "scanbot"},
+        {"operator": "sender", "operand": scanbot_address},
+        {"operator": "stream", "operand": scanbot_stream},
         # {"operator": "topic", "operand": "survey"},
     ]  
 

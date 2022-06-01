@@ -2,6 +2,7 @@
 kf_model.model
 class_names.pkl
 file_labels.pkl
+manual_message_api.py
 
 ## ignore config file
 config.ini
