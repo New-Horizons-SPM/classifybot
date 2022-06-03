@@ -98,7 +98,6 @@ for message_id in range(first_unread_id, newest_message_id, 100):
     
     batch_path = os.path.join(image_data_path, 'batch_' + str(max_batch_index))
     
-    pickle.dump(False, open('retrain_flag.pkl', 'wb'))
     if len(os.listdir(batch_path)) > 256:
         batch_path = os.path.join(image_data_path, 'batch_' + str(max_batch_index+1))
         os.mkdir(batch_path)

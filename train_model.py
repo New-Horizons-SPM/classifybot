@@ -173,6 +173,9 @@ with open('class_names.pkl', 'wb') as f:
     
 print(mlb.classes_)
 
+## set training flag back to false
+pickle.dump(False, open('retrain_flag.pkl', 'wb'))
+
 ## zulip message saying the training is done
 client = zulip.Client(config_file='zuliprc')
 
