@@ -120,7 +120,7 @@ for message_id in range(first_unread_id, newest_message_id, 100):
                     if reaction['user']['full_name'] != classifybot_name:
                         labels.append(reaction['emoji_name'])
                 
-                if len(labels) > 0:
+                if len(labels) > 0 and '.png' in url:
                     try:
                         if not url.split('/scanbot/')[1].split('?')[0] in os.listdir(batch_path):
                             filename = wget.download(url=url, out=batch_path)
