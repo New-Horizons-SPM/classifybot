@@ -3,178 +3,178 @@
 """
 Created on Tue May 17 11:05:48 2022
 
-pull in image pngs on firebase indexed on zulip thread, and get associated emoji reactions
+config.ini must contain
+run_name=<run_name>                                                             # Name given to the run. Outut is saved as <run_name>.pkl
+zulip_rc_path=<path to bot rc file>
+scanbot_address=<scanbot email address>
+scanbot_stream=<stream scanbot is sending data to>
+last_message_id=<id of the oldest message to anchor to>                         # This gets overwritten after the run. set to 0 to start from begining of time
+label_dict=<map emoji to label>                                                 # In the form of emoji1:label1,emoji2:label2. useful for same emoji with multiple names (e.g. -1 and thumbs_down)
 
-@author: jack
+This code scans <scanbot_stream> beginning at <last_message_id>. Selects all
+messages sent from <scanbot_address> directed at @<classifybot_handle>
+
+@author: Julian Ceddia & Jack Hellerstedt
 """
 
-import os
-# import time
 import zulip
-import wget
 import pickle
+import wget
+import os
+import imageio as iio
 
-
-# make database files
-with open('config.ini', 'r') as f:
-    config = f.read()
-    image_data_path = config.split('image_database_directory=')[1].split('\n')[0]
-    zuliprc_name = config.split('zuliprc_name=')[1].split('\n')[0]
-    classifybot_name = config.split('classifybot_name=')[1].split('\n')[0]
-    scanbot_address = config.split('scanbot_address=')[1].split('\n')[0]
-    scanbot_stream = config.split('scanbot_stream=')[1].split('\n')[0]
-
-try:
-    os.mkdir(image_data_path)
-except:
-    print('image_data dir already exists')
+def getZulipData():
+    with open('config.ini','r') as f:
+        config          = f.read()                                                  # config.ini must contain all of the following:
+        runName         = config.split('run_name=')[1].split('\n')[0]               # Name of the run. pkl saved as zulipData-runName-batch_x.pkl
+        zulipRcPath     = config.split('zulip_rc_path=')[1].split('\n')[0]          # Path to the zulip bot's rc file
+        scanbotAddress  = config.split('scanbot_address=')[1].split('\n')[0]        # scanbot's email address
+        scanbotStream   = config.split('scanbot_stream=')[1].split('\n')[0]         # stream to walk through
+        lastMsgID       = int(config.split('last_message_id=')[1].split('\n')[0])   # Start searching from this message ID. Doesn't have to be an exact message ID match. 0 starts from begining. Autoupdated at the end of a run to pick up from where you left off
+        batchSize       = int(config.split('batch_size=')[1].split('\n')[0])        # Number of images per pkl file
+        nbatch          = int(config.split('nbatch=')[1].split('\n')[0])            # Number of batches to process -1 for entire stream. 1 batch per pkl
+        userList        = config.split('user_list=')[1].split('\n')[0].split(',')   # Users to read labels from
+        labelDictIni    = config.split('label_dict=')[1].split('\n')[0]             # Map emojis to labels... In the form of emoji1:label1,emoji2:label2. useful for same emoji with multiple names (e.g. -1 and thumbs_down)
+        pklPath         = config.split('pkl_path=')[1].split('\n')[0]               # Output path for pkl'd data
     
-if not 'batch_0' in os.listdir(image_data_path):
-    os.mkdir(os.path.join(image_data_path, 'batch_0'))
-
-
-
-## specify zuliprc file
-zuliprc_path = os.path.join(os.getcwd(), zuliprc_name)
-client = zulip.Client(config_file=zuliprc_path)
-
-## specify hard-coded classifybot name
-# classifybot_name = 'classifybot'
-
-
+    labelDict = {}                                                                  # Convert labelDictini to python dictionary...
+    labelDictIni = labelDictIni.split(',')
+    for ld in labelDictIni:
+        key,value = ld.split(':')
+        labelDict[key] = value
     
-
-## specify stream & scanbot email address to read messages:
-request = {}
-## define the narrow
-request['narrow'] = [
-        {"operator": "sender", "operand": scanbot_address},
-        {"operator": "stream", "operand": scanbot_stream},
-        # {"operator": "topic", "operand": "survey"},
-    ]  
-
-## get id of first unread message
-request['anchor'] = 'first_unread'
-request['num_before'] = 0
-request['num_after'] = 0
-
-##go for oldest
-# request['anchor'] = 'oldest'
-# request['num_before'] = 0
-# request['num_after'] = 1
-
-result = client.get_messages(request)
-print('first_unread anchor')
-print(result)
-
-first_unread_id = result['messages'][0]['id']
-
-## get id of newest message
-request['anchor'] = 'newest'
-request['num_before'] = 1
-request['num_after'] = 0
-
-result = client.get_messages(request)
-print('newest anchor')
-print(result)
-
-newest_message_id = result['messages'][0]['id']
-
-to_mark_read = []
-keep_unread = []
-for message_id in range(first_unread_id, newest_message_id, 100):
-    request['anchor'] = message_id
-    request['num_before'] = 0
-    request['num_after'] = 100
+    if(not pklPath.endswith('/')): pklPath += '/'
+    pklPath += runName + '/'
+    pklParams = {"runName":         runName,                                        # Store config params in the final pickle file
+                 "zulipRcPath":     zulipRcPath,
+                 "scanbotAddress":  scanbotAddress,
+                 "scanbotStream":   scanbotStream,
+                 "lastMsgID":       lastMsgID,
+                 "userList":        userList,
+                 "batchSize":       batchSize,
+                 "nbatch":          nbatch,
+                 "labelDict":       labelDict}
     
-    ## check which batch folder to put images in
-    folders = os.listdir(image_data_path)
-    max_batch_index = 0
-    for name in folders:
-        if name.split('_')[0] == 'batch':
-            batch_index = int(name.split('_')[1])
-            if batch_index > max_batch_index:
-                max_batch_index = batch_index
+    client = zulip.Client(config_file=zulipRcPath)                                  # Zulip Client
+    handle = client.get_profile()['full_name']                                      # Bot's handle
     
-    batch_path = os.path.join(image_data_path, 'batch_' + str(max_batch_index))
-    
-    if len(os.listdir(batch_path)) > 256:
-        batch_path = os.path.join(image_data_path, 'batch_' + str(max_batch_index+1))
-        os.mkdir(batch_path)
-        pickle.dump(True, open('retrain_flag.pkl', 'wb'))
+    try: os.mkdir(pklPath)
+    except: pass
+    try: os.mkdir(pklPath + "labelled")
+    except: pass
+    try: os.mkdir(pklPath + "unlabelled")
+    except: pass
+    try:
+        labelledBatchNo = max([int(b.split('batch_')[1].split('.pkl')[0]) for b in  # If there are any pkl's with this runName, check what batch number we're up to
+                               [f for f in os.listdir(pklPath + 'labelled/')
+                                if('zulipData-' + runName + '-labelled-' in f)]])
+        labelledData = pickle.load(open(pklPath + 'labelled/zulipData-' + runName + '-labelled-batch_' # load in the batch file to continue adding to it
+                                        + str(labelledBatchNo) + '.pkl','rb'))
+        labelledData = labelledData['data']                                         # just get the data from it
+        if(len(labelledData) >= batchSize):                                         # If this batch is full, start from the next one
+            labelledBatchNo += 1
+            labelledData = {}
+    except:                                                                         # If no batches with runName, start from 0
+        labelledBatchNo = 0
+        labelledData   = {}
     
     try:
-        batch_labels = pickle.load(open(os.path.join(batch_path,'file_labels.pkl'), 'rb'))
-    except:
-        print('no batch labels ' + batch_path)
-        batch_labels = {}
-    
-    
-    results = client.get_messages(request)
-    if results['result'] == 'success':
-        for message in results['messages']:
-            if '<div class="message_inline_image">' in message['content'] and 'read' not in message['flags']:
-                url = message['content'].split('<a href="')[1].split('">')[0].replace('&amp;', '&')
-                labels = []
-                for reaction in message['reactions']:
-                    if reaction['user']['full_name'] != classifybot_name:
-                        labels.append(reaction['emoji_name'])
-                
-                if len(labels) > 0 and '.png' in url:
+        unlabelledBatchNo = max([int(b.split('batch_')[1].split('.pkl')[0]) for b in#  If there are any pkl's with this runName, check what batch number we're up to
+                                 [f for f in os.listdir(pklPath + 'unlabelled/')
+                                  if('zulipData-' + runName + '-unlabelled-' in f)]])
+        unlabelledData = pickle.load(open(pklPath + 'unlabelled/zulipData-' + runName + '-unlabelled-batch_' # load in the batch file to continue adding to it
+                                          + str(unlabelledBatchNo) + '.pkl','rb'))
+        unlabelledData = unlabelledData['data']                                     # just get the data from it
+        if(len(unlabelledData) >= batchSize):                                       # If this batch is full, start from the next one
+            unlabelledBatchNo += 1
+            unlabelledData = {}
+    except:                                                                         # If no batches with runName, start from 0
+        unlabelledBatchNo = 0
+        unlabelledData = {}
+        
+    pbatch = 0                                                                      # Number of batches completed so far
+    result = {'found_newest': False}                                                # Initialise result
+    while(not result['found_newest'] and (pbatch < nbatch or nbatch < 0)):          # Keep going until we run out of messages in the stream, or until we hit our batch limit. If nbatch=-1 then process all messages
+        request = {}                                                                # Request to pull messages
+        request['narrow'] = [                                                       # Filter search on...
+                {"operator": "sender", "operand": scanbotAddress},                  # Sender being scanbot (scanbot's email address)
+                {"operator": "stream", "operand": scanbotStream}]                   # Stream being 'scanbot'
+                # {"operator": "topic", "operand": "survey"},                       # Topic being 'survey'
+        request['anchor'] = lastMsgID                                               # Start search from this message ID.
+        request['num_before'] = 0                                                   # 0 messages before lastMsgID
+        request['num_after'] = 100                                                  # Grab the 100 messages after lastMsgID
+        result = client.get_messages(request)                                       # Perform search
+        
+        messages = result['messages']                                               # All messages returned from search
+        
+        for message in messages:
+            if(pbatch == nbatch): break                                             # Stop processing if we've hit our batch limit
+            if '.sxm' in message['content']:                                        # If there's an sxm filename in the message content
+                try:
+                    sxmFile = message['content'].split('.sxm')[0].split('/')[-1] + ".sxm"
+                    if(sxmFile in labelledData):   continue                         # Don't pickup the same sxm file twice
+                    if(sxmFile in unlabelledData): continue                         # Don't pickup the same sxm file twice
+                    
                     try:
-                        if not url.split('/scanbot/')[1].split('?')[0] in os.listdir(batch_path):
-                            filename = wget.download(url=url, out=batch_path)
-                            keyname = str(os.path.join(batch_path.split('/')[-1], filename.split('/')[-1]))
-                            batch_labels[keyname] = labels
+                        url = message['content'].split('<a href="')[1].split('">')[0].replace('&amp;', '&')
                     except:
-                        pass
-                                    
-                    ## mark the message as read
-                    to_mark_read.append(message['id'])
+                        url = message['content'].split('(')[1].split(')')[0]
                     
-                else:
-                    keep_unread.append(message['id'])
+                    labels = []
+                    for reaction in message['reactions']:
+                        if reaction['user']['email'] in userList:                   # Only look at labels from users in the list
+                            label = reaction['emoji_name']
+                            if(label not in labelDict):     continue                # Only process labels listed in the config file
+                            if(labelDict[label] in labels): continue                # Only add the label if it (or an equivalent one) hasn't been added yet
+                            labels.append(labelDict[label])                         # Append the label to the list for this sxm
                     
-            else: ## message doesn't have an image in it; mark read
-                to_mark_read.append(message['id'])
-
-    else:
-        print(results)
-    
-    ## dump the batch_labels
-    pickle.dump(batch_labels, open(os.path.join(batch_path, 'file_labels.pkl'), 'wb'))
+                    if(len(labels)):
+                        filename = wget.download(url=url)
+                        im = iio.imread(filename)
+                        os.remove(filename)
+                        labelledData[sxmFile] = [im,labels]                         # Only data with more than zero labels goes in this list
+                        if(len(labelledData) == batchSize):
+                            print("Batch " + str(pbatch) + " complete")
+                            pklParams['data'] = labelledData
+                            pklName  = 'zulipData-' + runName + '-labelled-'
+                            pklName += 'batch_' + str(labelledBatchNo) + '.pkl'
+                            pickle.dump(pklParams, open(pklPath + 'labelled/' + pklName, 'wb')) # Pickle containing config settings and labelled data
+                            labelledBatchNo += 1
+                            labelledData   = {}
+                            pbatch += 1
+                    # else:
+                    #     unlabelledData[sxmFile] = [im,labels]                       # Unlabelled data goes in this list
+                    #     if(len(unlabelledData) == batchSize):
+                    #         pklParams['data'] = unlabelledData
+                    #         pklName  = 'zulipData-' + runName + '-unlabelled-'
+                    #         pklName += 'batch_' + str(unlabelledBatchNo) + '.pkl'
+                    #         pickle.dump(pklParams, open(pklPath + 'unlabelled/' + pklName, 'wb')) # Pickle containing config settings and unlabelled data
+                    #         unlabelledBatchNo += 1
+                    #         unlabelledData = {}
+                    #         pbatch += 1
+                    
+                    lastMsgID = message['id'] + 1                                   # Remember this number for next time, so we don't need to go through entire message history
+                except:
+                    pass
+                    
+    if(len(labelledData)):
+        pklParams['data'] = labelledData
+        pklName  = 'zulipData-' + runName + '-labelled-'
+        pklName += 'batch_' + str(labelledBatchNo) + '.pkl'
+        pickle.dump(pklParams, open(pklPath + 'labelled/' + pklName, 'wb'))         # Pickle containing config settings and labelled data
         
+    # if(len(unlabelledData)):
+    #     pklParams['data'] = unlabelledData
+    #     pklName  = 'zulipData-' + runName + '-unlabelled-'
+    #     pklName += 'batch_' + str(unlabelledBatchNo) + '.pkl'
+    #     pickle.dump(pklParams, open(pklPath + 'unlabelled/' + pklName, 'wb'))       # Pickle containing config settings and unlabelled data
+    #     unlabelledData = {}
     
+    with open('config.ini','r+') as f:
+        config = str(f.read())
+        oldMsgID = config.split('last_message_id=')[1].split('\n')[0]
+        config = config.replace('last_message_id=' + str(oldMsgID),
+                                'last_message_id=' + str(lastMsgID))
         
-## now mark all read
-if len(to_mark_read) > 0:
-    mkrd_request = {
-        'messages': to_mark_read,
-        'op': 'add',
-        'flag': 'read',
-        }
-    result = client.update_message_flags(mkrd_request)
-    print(result)
-    
-    # ## put a sleep in here to not hit the API rate limit
-    # print('the slow loop to add eyes to all mark-read files')
-    # for msg_id in to_mark_read:
-    #     react_request = {
-    #         'message_id': msg_id,
-    #         'emoji_name': 'eyes',
-    #         }
-    #     result = client.add_reaction(react_request)
-    #     time.sleep(.3)
-    
-## mark messages that haven't been labelled unread
-mkunread_request = {
-        'messages': keep_unread,
-        'op': 'remove',
-        'flag': 'read',
-    }
-result = client.update_message_flags(mkunread_request)
-print(result)
-    
-    
-
-        
+    with open('config.ini','w') as f:
+        f.write(config)                                                             # Update config.ini with lastMsgID to pick up from where we left off

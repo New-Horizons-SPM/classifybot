@@ -1,189 +1,179 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Wed May 18 13:30:07 2022
+Created on Mon Jul 18 14:03:49 2022
 
-https://www.tensorflow.org/tutorials/load_data/images
-
-@author: jack
+@author: Maxwell West & Julian Ceddia
 """
 
-from datetime import datetime
-import pickle
-# import numpy as np
 import os
-import sys
-# import PIL
-# import PIL.Image
-import tensorflow as tf
-from tensorflow.keras import layers
-import tensorflow_hub as hub
-# import tensorflow_datasets as tfds
+import pickle
+import torch, numpy as np
+import torch.nn as nn
+import torch.nn.functional as F
+import torch.optim as optim
+from collections import Counter
 
-import zulip
+class ConvNet(nn.Module):
+    def __init__(self, load_model=""):
+        """
+        Simple convolutional neural network with two convolutional layers, one
+        hidden layer, and one binary output layer.
 
+        Parameters
+        ----------
+        load_model : Path to the model to be loaded
 
-# import matplotlib
-# matplotlib.use('Agg') ## for plotting headless
-# import matplotlib.pyplot as plt
-
-from sklearn.preprocessing import MultiLabelBinarizer
-from sklearn.model_selection import train_test_split
-
-# import pathlib
-
-with open('config.ini', 'r') as f:
-    config = f.read()
-    data_dir = config.split('image_database_directory=')[1].split('\n')[0]
-
-if not pickle.load(open('retrain_flag.pkl', 'rb')):
-    print('retrain flag not set')
-    sys.exit()
-
-master_label_dict = {}
-for root, dirs, files in os.walk(data_dir):
-    for name in files:
-        if name == 'file_labels.pkl':
-            master_label_dict.update(pickle.load(open(os.path.join(root, name), 'rb')))
-
-## make ordered lists of the dict keys and values
-data_files = []
-data_labels = []
-for key, value in master_label_dict.items():
-    data_files.append(os.path.join(data_dir, key))
-    data_labels.append(value)
-
-
-for image_index, image_labels in enumerate(data_labels):
-    ## turn thumbs_down into -1:
-    image_labels = ['-1' if item == 'thumbs_down' else item for item in image_labels]
-    ## turn barber into striped_pole
-    image_labels = ['striped_pole' if item == 'barber' else item for item in image_labels]
-    
-    data_labels[image_index] = image_labels
-            
-X_train, X_val, y_train, y_val = train_test_split(data_files, data_labels, test_size=0.2, random_state=44)
-
-
-## from https://github.com/ashrefm/multi-label-soft-f1/blob/master/Multi-Label%20Image%20Classification%20in%20TensorFlow%202.0.ipynb
-mlb = MultiLabelBinarizer()
-mlb.fit(y_train)
-N_LABELS = len(mlb.classes_)
-
-# # Loop over all labels and show them
-# N_LABELS = len(mlb.classes_)
-# for (i, label) in enumerate(mlb.classes_):
-#     print("{}. {}".format(i, label))
-
-y_train_bin = mlb.transform(y_train)
-y_val_bin = mlb.transform(y_val)
-
-
-IMG_SIZE = 224 # Specify height and width of image to match the input format of the model
-CHANNELS = 3 # Keep RGB color channels to match the input format of the model
-
-def parse_function(filename, label):
-    """Function that returns a tuple of normalized image array and labels array.
-    Args:
-        filename: string representing path to image
-        label: 0/1 one-dimensional array of size N_LABELS
-    """
-    # Read an image from a file
-    image_string = tf.io.read_file(filename)
-    # Decode it into a dense vector
-    image_decoded = tf.image.decode_jpeg(image_string, channels=CHANNELS)
-    # Resize it to fixed shape
-    image_resized = tf.image.resize(image_decoded, [IMG_SIZE, IMG_SIZE])
-    # Normalize it from [0, 255] to [0.0, 1.0]
-    image_normalized = image_resized / 255.0
-    return image_normalized, label
-
-BATCH_SIZE = 256 # Big enough to measure an F1-score
-AUTOTUNE = tf.data.experimental.AUTOTUNE # Adapt preprocessing and prefetching dynamically
-SHUFFLE_BUFFER_SIZE = 25 # Shuffle the training data by a chunk of 1024 observations
-
-def create_dataset(filenames, labels, is_training=True):
-    """Load and parse dataset.
-    Args:
-        filenames: list of image paths
-        labels: numpy array of shape (BATCH_SIZE, N_LABELS)
-        is_training: boolean to indicate training mode
-    """
-    
-    # Create a first dataset of file paths and labels
-    dataset = tf.data.Dataset.from_tensor_slices((filenames, labels))
-    # Parse and preprocess observations in parallel
-    dataset = dataset.map(parse_function, num_parallel_calls=AUTOTUNE)
-    
-    if is_training == True:
-        # This is a small dataset, only load it once, and keep it in memory.
-        dataset = dataset.cache()
-        # Shuffle the data each buffer size
-        dataset = dataset.shuffle(buffer_size=SHUFFLE_BUFFER_SIZE)
+        """
+        super(ConvNet, self).__init__()
+        """
+        /Replace this code with best architecture
+        """
+        self.conv1 = nn.Conv2d( 3,  5, 3)                                       # 3 input channels, 5 output channels and a kernel size of 3
+        self.conv2 = nn.Conv2d( 5,  5, 3)                                       # 5 input channels, 5 output channels and a kernel size of 3
         
-    # Batch the data for multiple steps
-    dataset = dataset.batch(BATCH_SIZE)
-    # Fetch batches in the background while the model is training.
-    dataset = dataset.prefetch(buffer_size=AUTOTUNE)
+        self.pool = nn.MaxPool2d(2, 2)                                          # https://pytorch.org/docs/stable/generated/torch.nn.MaxPool2d.html : Applies a 2D max pooling over an input signal composed of several input planes.
+
+        self.fc1 = nn.Linear(14045, 128)                                        # 14,045 just comes from the amount of neurons the convolutional layers happened to finish with. 128 output neurons in this hidden layer is completely arbitrary 
+        self.fc3 = nn.Linear(128, 2)                                            # Output layer with binary classification to begin with
+        
+        self.opt = optim.Adam(self.parameters(), lr=0.001)                      # lr is another thing which can be played with... https://pythonguides.com/adam-optimizer-pytorch/
+
+        """
+        Replace this code with best architecture/
+        """
+        
+        if load_model:
+            load_model = "saved_nets/" + load_model + ".pt"
+            ckpt = torch.load(load_model)
+            
+            if "state_dict" in ckpt.keys():
+                self.load_state_dict(ckpt['state_dict'])
+            
+            else:
+                self.load_state_dict(ckpt)
     
-    return dataset
+    def forward(self, x):
+        """
+        Function that's called when a prediction is to be made. call like:
+        net = ConvNet()...
+        ...
+        prediction = net(data)
 
+        Parameters
+        ----------
+        x : Data/image to predict on
 
-train_ds = create_dataset(X_train, y_train_bin)
-val_ds = create_dataset(X_val, y_val_bin)
+        Returns
+        -------
+        x : Prediction tensor where each element is a label. Take the highest
 
-
-### headless model
-
-model = tf.keras.Sequential()
-
-model.add(hub.KerasLayer("https://tfhub.dev/google/imagenet/mobilenet_v2_100_224/feature_vector/5",
-                   trainable=False))
-
-model.add(layers.Dense(256, activation='relu', name='hidden_layer_1'))
-model.add(layers.Dense(256, activation='relu', name='hidden_layer_2'))
-model.add(layers.Dense(N_LABELS, activation='sigmoid', name='output'))
-
-model.build([None, IMG_SIZE, IMG_SIZE, CHANNELS])
-
-model.summary()
-
-from tf_custom_metric import macro_soft_f1
-
-LR = 1e-5 # keep it small when transfer learning
-EPOCHS = 30
-
-model.compile(
-  optimizer=tf.keras.optimizers.Adam(learning_rate=LR),
-  loss=macro_soft_f1,
-  metrics=[macro_soft_f1])
-
-start = datetime.now()
-history = model.fit(train_ds,
-                    epochs=EPOCHS,
-                    validation_data=create_dataset(X_val, y_val_bin))
-print('\nTraining took {}'.format(datetime.now()-start))
-
-
-
-model.save('kf_model.model')
-
-with open('class_names.pkl', 'wb') as f:
-    pickle.dump(mlb.classes_, f)
+        """
+        """
+        /Replace this code with the best architecture
+        """
+        x = self.pool(F.relu(self.conv1(x)))                                    # The first convolutional layer
+        x = self.pool(F.relu(self.conv2(x)))                                    # Second convolutional layer
+        
+        x = x.view(x.size(0), -1)                                               # Returns a new tensor with the same data as the x-tensor but of a different shape.
+        x = F.relu(self.fc1(x))                                                 # Hidden layer
+        x = self.fc3(x)                                                         # Output layer
+        """
+        Replace this code with the best architecture/
+        """
+        return x
     
-print(mlb.classes_)
+    def train(self, x_train, y_train, x_test, y_test, name, epochs=1, batch_size=64):
+        criterion = nn.CrossEntropyLoss()
+        best = 0.0                                                              # Keep track of the best performing model
+        print('Start training...')
+        print('------------------------------------------------')
+        print(' Train  Acc | Test Acc | Best Test Acc |  Loss')
+        print('------------------------------------------------')
+        for epoch in range(epochs):
+            running_loss = 0.0
+            for i in range(x_train.size(0) // batch_size):
+                inputs = x_train[i * batch_size : (i+1) * batch_size]
+                labels = y_train[i * batch_size : (i+1) * batch_size]
+    
+                self.opt.zero_grad()
+    
+                outputs = self(inputs)
+                loss = criterion(outputs, labels)
+                loss.backward()
+                self.opt.step()
+    
+                running_loss += float(loss.detach())
+    
+                if i and not(i % 10) or True:
+    
+                    with torch.no_grad():
+                        
+                        train_pred = self(x_train)
+                        train_acc  = (torch.sum(torch.argmax(train_pred, axis=1) == y_train) / y_train.size(0)).item()
+                        
+                        test_pred = self(x_test)
+                        test_acc  = (torch.sum(torch.argmax(test_pred, axis=1) == y_test) / y_test.size(0)).item()
+                        
+    
+                    if test_acc > best:
+                        best = test_acc
+                        torch.save(self.state_dict(), "saved_nets/" + name + ".pt")
+                        
+                    print(f'    {train_acc:.3f}   |   {test_acc:.3f}  |     {best:.3f}     |  {running_loss:.3f}')
+    				
+                    running_loss = 0.0
+                
+        print('Done training')
+        return name
 
-## set training flag back to false
-pickle.dump(False, open('retrain_flag.pkl', 'wb'))
-
-## zulip message saying the training is done
-client = zulip.Client(config_file='zuliprc')
-
-request = {
-    "type": "stream",
-    "to": "scanbot",
-    "topic": "TF model",
-    "content": "train_model finished"
-    }
-result = client.send_message(request)
-print(result)
+def trainNewCNN(runName, targetLabel, pklPath, augmentData):
+    x = []                                                                          # The images will go here
+    y = []                                                                          # The labels will go here
+    allLabels = []                                                                  # This will keep count of all the labels we see
+    if(not pklPath.endswith('/')): pklPath += '/'
+    pklPath += runName + "/labelled/"
+    pklFiles = os.listdir(pklPath)
+    for pklFile in pklFiles:
+        batchDict = pickle.load(open(pklPath + pklFile,'rb'))
+        batchData = batchDict['data']
+        print(pklFile)
+        for key, value in batchData.items():
+            im     = np.array(value[0]/np.max(value[0]),dtype=np.float32)           # Normalise the data and force to be float32
+            labels = value[1]
+            if(im.shape != (221, 221, 4)): continue                                 # Skip images that are the wrong size
+            x.append(np.transpose(im[:,:,:3], (2,0,1)))                             # Append the image to x
+            y.append(int(targetLabel in labels))                                    # At the moment I'm assuming the labels are just 0 or 1 depending on whether the target label is present
+            
+            if augmentData:                                                         # Optionally add images which are just reflections of existing images
+                x.append(np.transpose(im[:,::-1,:3], (2,0,1)))                      # Reflect in x
+                y.append(int(targetLabel in labels))
+                
+                x.append(np.transpose(im[::-1,:,:3], (2,0,1)))                      # Reflect in y
+                y.append(int(targetLabel in labels))
+                
+                x.append(np.transpose(im[::-1,::-1,:3], (2,0,1)))                   # Reflect in xy
+                y.append(int(targetLabel in labels))
+    
+            allLabels.extend(labels * (4 if augmentData else 1))                    # Keeping count of all labels we've seen
+        
+    x = np.array(x)                                                                 # Convert to numpy array
+    y = np.array(y)                                                                 # Convert to numpy array
+    
+    print('Total number of images: ', len(x))
+    print('Summary of labels:')
+    label_freq = sorted(zip(Counter(allLabels).keys(), Counter(allLabels).values()), key=lambda x: -x[1])
+    print(*label_freq,sep='\n')
+    
+    shuffle = np.random.permutation(range(x.shape[0]))                              # Shuffle the data
+    
+    x = torch.tensor(x[shuffle])                                                    # Convert to a pytorch compatible tensor
+    y = torch.tensor(y[shuffle], dtype=torch.long)
+    
+    cutoff = int(0.9 * x.shape[0])                                                  # Split into training and testing/validation subsets
+    x_train, x_test = x[:cutoff], x[cutoff:]                                        # Image data
+    y_train, y_test = y[:cutoff], y[cutoff:]                                        # Labels
+    
+    net = ConvNet()                                                                 # Instantiate the CNN
+    modelPath = net.train(x_train, y_train, x_test, y_test, name=runName, epochs=2, batch_size=64) # Train the CNN
+    
+    return modelPath
